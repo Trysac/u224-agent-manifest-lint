@@ -19,6 +19,9 @@ classifiers = [
 ]
 dependencies = []
 
+[project.scripts]
+agent-manifest-lint = "agent_manifest_lint.__main__:main"
+
 [project.urls]
 Homepage = "https://github.com/Trysac/u224-agent-manifest-lint"
 Source = "https://github.com/Trysac/u224-agent-manifest-lint"
