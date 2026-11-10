@@ -222,6 +222,38 @@ def _json_depth(obj: Any) -> int:
     return max_depth
 
 
+def _raw_max_depth(text: str) -> int:
+    """Compute maximum bracket nesting depth of raw JSON text.
+
+    This runs before parsing so that adversarially nested documents are
+    rejected as ``too_deep`` even when the parser would fail with a
+    ``JSONDecodeError`` (or ``RecursionError``) first. Brackets inside
+    strings are ignored.
+    """
+    depth = 0
+    max_depth = 0
+    in_string = False
+    escaped = False
+    for ch in text:
+        if in_string:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_string = False
+            continue
+        if ch == '"':
+            in_string = True
+        elif ch in "[{":
+            depth += 1
+            if depth > max_depth:
+                max_depth = depth
+        elif ch in "]}" and depth > 0:
+            depth -= 1
+    return max_depth
+
+
 def lint(manifest: Mapping[str, Any]) -> list[Finding]:
     """Lint a manifest mapping and return findings.
 
@@ -520,6 +552,14 @@ def lint_text(
         text_str = data.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise LintError("invalid_json", "invalid UTF-8") from exc
+    # Reject deeply nested documents before parsing: the parser may report a
+    # JSONDecodeError or exhaust the interpreter's recursion limit first, and
+    # either way the correct classification here is "too_deep".
+    if _raw_max_depth(text_str) > max_depth:
+        raise LintError(
+            "too_deep",
+            f"JSON nesting exceeds {max_depth} levels",
+        )
     # Parse JSON with duplicate-key rejection. A deeply nested document can
     # exhaust the interpreter's recursion limit inside the parser before the
     # depth check below runs, so treat that as "too_deep".
