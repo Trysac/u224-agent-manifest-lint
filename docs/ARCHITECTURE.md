@@ -1,29 +1,18 @@
 # Architecture
 
-## Purpose
+## Overview
 
-`trysac-agent-manifest-lint` is a small, dependency-free Python library: Lint agent manifests for least privilege: required fields, wildcard and sensitive permissions, tool permissions not declared, unused grants and inline secrets, with JSON pointers
+The linter is a pure function library that validates a manifest mapping against a set of least-privilege rules. It is deliberately schemaless beyond the documented format, focusing on relationships between declared permissions and tool usage rather than exhaustive schema validation.
 
-## Shape
+## Key components
 
-```text
-caller code --> agent_manifest_lint (public API in __init__.py)
-                    |
-                    +-- pure functions, no I/O, no global state
-```
+- **`lint(manifest)`**: Core validation, returns sorted findings.
+- **`lint_text(text)`**: Handles JSON parsing with size/depth limits and duplicate-key rejection.
+- **`Finding`**: Immutable dataclass holding rule, severity, pointer, and message.
+- **`LintError`**: Typed exception for parse/limit errors.
+- **`format_text`**: Human-readable output.
+- **CLI (`__main__.py`)**: Thin wrapper around `lint_text`.
 
-- **Public API**: the names listed in `__all__` of `src/agent_manifest_lint/__init__.py`. Anything else is
-  internal and may change without a major version.
-- **Errors**: invalid input raises built-in exceptions (`ValueError`, `TypeError`) with a clear
-  message; the library never prints or exits.
-- **Side effects**: none. If a feature needs I/O, isolate it in its own module behind a small
-  interface and record the choice in an ADR.
+Findings are sorted by JSON Pointer (document order) and then rule. Pointer generation follows RFC 6901.
 
-## Quality contract
-
-`scripts/check.py` is the single definition of the gates; `fabrica.json` tells the factory and CI
-how to run it. See [TESTING.md](TESTING.md).
-
-## Decisions
-
-Architecture decisions are recorded in [decisions/](decisions/) as numbered ADRs.
+The linter also enforces limits: maximum 1 MiB input, maximum 32 levels of nesting, and rejects BOM and duplicate keys.

@@ -9,4 +9,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- Added agent manifest linter with least-privilege rules and CLI.
 - Initial project structure from the factory utility template.
